@@ -199,5 +199,3 @@ win_inet_pton @ file:///D:/bld/win_inet_pton_1727796272493/work
 xyzservices @ file:///home/conda/feedstock_root/build_artifacts/xyzservices_1725366347586/work
 zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1726248574750/work
 zstandard==0.23.0
-
-flask~=3.0.3
