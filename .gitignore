@@ -1,2 +1,9 @@
+### Flask template
+instance/*
+!instance/.gitignore
+.webassets-cache
+.env
+
+
 .vercel
 /algorithms/test_nb.ipynb
