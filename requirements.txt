@@ -1,1 +1,12 @@
-flask~=3.0.3
+flask
+numpy
+pandas
+geopandas
+osmnx
+networkx
+requests
+sqlalchemy
+psycopg2
+fiona
+shapely
+pyproj
