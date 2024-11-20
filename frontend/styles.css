@@ -1,56 +1,158 @@
 /* Grundstruktur */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  /* HTML und Body auf 100% Höhe setzen */
-  html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden; /* Verhindert Scrollen */
-    font-family: Arial, sans-serif;
-  }
-  
-  /* Header anpassen */
-  header {
-    background: #333;
-    color: #fff;
-    padding: 1em;
-    text-align: center;
-    position: absolute;
-    top: 0;
-    width: 100%;
-    z-index: 1000;
-  }
-  
-  /* Steuerungselemente für die Filter */
-  #controls {
-    padding: 1em;
-    text-align: center;
-    background: #f4f4f4;
-    position: absolute;
-    top: 60px; /* Direkt unter dem Header */
-    width: 100%;
-    z-index: 1000;
-  }
-  
-  /* Kartencontainer und Karte */
-  #map-container, #map {
-    width: 100%;
-    height: 100vh; /* Volle Höhe des Ansichtsfensters */
-  }
-  
-  /* Info-Bereich für Geschwindigkeit und Distanz */
-  #info {
-    padding: 1em;
-    text-align: center;
-    background: #f4f4f4;
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    z-index: 1000;
-  }
-  
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+header {
+  background: #333;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.menu-btn {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  font-size: 20px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+/* Seitliches Menü */
+.side-menu {
+  height: 100%;
+  width: 0;
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  background-color: #111;
+  overflow-x: hidden;
+  transition: 0.5s;
+  padding-top: 60px;
+  color: white;
+}
+
+.side-menu ul {
+  list-style: none;
+  padding: 0;
+}
+
+.side-menu ul li {
+  padding: 10px 20px;
+}
+
+.side-menu ul li a {
+  color: white;
+  text-decoration: none;
+}
+
+.close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 30px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+/* Layer-Menü - z-index erhöhen */
+.side-menu {
+  z-index: 1100; /* Höher als die Leaflet-Steuerelemente */
+}
+
+/* Suchleiste */
+#search-bar {
+  position: fixed;
+  top: 60px; /* Direkt unter dem Header */
+  right: 10px; /* Rechtsbündig */
+  z-index: 1200; /* Höher als Layer und Karte */
+  background: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  width: 250px;
+}
+
+#search-bar input {
+  border: none;
+  outline: none;
+  padding: 5px;
+  flex-grow: 1;
+  font-size: 14px;
+}
+
+#search-bar button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* Kartencontainer */
+#map-container {
+  width: 100%;
+  height: calc(100vh - 50px); /* Volle Höhe minus Header */
+  margin-top: 50px;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+footer {
+  background: #333;
+  color: white;
+  text-align: center;
+  padding: 10px;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.custom-location-icon {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Cluster-Symbol: Stil der Zahlen explizit überschreiben */
+.custom-cluster-icon span {
+  color: yellow !important; /* Farbe der Zahlen auf Gelb ändern */
+  font-weight: bold;        /* Fett für bessere Lesbarkeit */
+  font-size: 14px;          /* Schriftgröße */
+  text-shadow: 0 0 3px black; /* Optional: schwarzer Schatten für besseren Kontrast */
+}
+
+#filters {
+  position: fixed;
+  top: 100px;
+  right: 10px;
+  background: white;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  z-index: 1200;
+}
