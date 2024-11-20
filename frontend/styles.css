@@ -1,0 +1,56 @@
+/* Grundstruktur */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* HTML und Body auf 100% Höhe setzen */
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Verhindert Scrollen */
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Header anpassen */
+  header {
+    background: #333;
+    color: #fff;
+    padding: 1em;
+    text-align: center;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+  
+  /* Steuerungselemente für die Filter */
+  #controls {
+    padding: 1em;
+    text-align: center;
+    background: #f4f4f4;
+    position: absolute;
+    top: 60px; /* Direkt unter dem Header */
+    width: 100%;
+    z-index: 1000;
+  }
+  
+  /* Kartencontainer und Karte */
+  #map-container, #map {
+    width: 100%;
+    height: 100vh; /* Volle Höhe des Ansichtsfensters */
+  }
+  
+  /* Info-Bereich für Geschwindigkeit und Distanz */
+  #info {
+    padding: 1em;
+    text-align: center;
+    background: #f4f4f4;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+  
