@@ -8,3 +8,4 @@ instance/*
 .vercel
 /algorithms/test_nb.ipynb
 /algorithms/rasterisation.ipynb
+/algorithms/cache/*
