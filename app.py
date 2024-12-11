@@ -9,7 +9,7 @@ import geopandas as gpd
 import networkx as nx
 import osmnx as ox
 from dotenv import load_dotenv
-
+from shapely.geometry import Point
 app = Flask(__name__)
 
 load_dotenv()
@@ -59,7 +59,6 @@ def find_shortest_path(G, start_lon, start_lat, end_lon, end_lat):
         logging.error("No path found between the specified nodes")
         return None
 
-
 @app.route('/')
 def home():  # put application's code here
     return render_template('index.html')
@@ -86,6 +85,23 @@ def shortest_path():
 
     return jsonify({'path': path_coords})
 
+@app.route('/save-location', methods=['POST'])
+def save_location():
+    data = request.json
+    user_id = data['user_id']
+    lat = data['lat']
+    lon = data['lon']
+
+    engine = create_engine(
+        f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}")
+    point = Point(lon, lat)
+    with engine.connect() as conn:
+        conn.execute(
+            text("INSERT INTO gta_p1.user_trajectories (user_id, geom) VALUES (:user_id, ST_GeomFromText(:geom, 4326))"),
+            {"user_id": user_id, "geom": point.wkt}
+        )
+
+    return jsonify({'status': 'success'})
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    app.run()

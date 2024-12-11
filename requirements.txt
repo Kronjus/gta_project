@@ -3,4 +3,4 @@ numpy
 requests
 sqlalchemy
 psycopg2-binary
-geopandas
+geopandas-base
