@@ -11,10 +11,115 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 // Benutzerdefiniertes Icon laden
 const obstacleIcon = L.icon({
-  iconUrl: "{{ url_for('static', filename='obstacle_icon.svg') }}", // Icon-Pfad im selben Verzeichnis
+  iconUrl: "./static/obstacle_icon.svg", // Icon-Pfad im selben Verzeichnis
   iconSize: [25, 25],          // Größe des Icons
   iconAnchor: [12, 12]         // Position des Ankers
 });
+
+document.getElementById('navigation-button').addEventListener('click', () => {
+    const checkbox = document.getElementById('accessibility-switch');
+    if (checkbox.checked) {
+        console.log('TBI: Implement restricted navigation');
+    } else {
+        getLocations();
+    }
+});
+
+// Uneingeschränkte Navigation
+
+
+// Hole aktuelle Position und Zielort
+function getLocations() {
+    console.log('Getting current location and destination...');
+    const searchInput = document.getElementById('search-input');
+    const destination = searchInput.value.trim();
+
+    if (!destination) {
+        alert("Please enter a destination.");
+        return;
+    }
+
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const startLat = position.coords.latitude;
+                const startLon = position.coords.longitude;
+
+                // Geocode the destination to get its coordinates
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
+
+                fetch(geocodeUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length > 0) {
+                            const endLat = data[0].lat;
+                            const endLon = data[0].lon;
+
+                            fetch('/shortest-path', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    start_lat: startLat,
+                                    start_lon: startLon,
+                                    end_lat: endLat,
+                                    end_lon: endLon,
+                                }),
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    console.log('Shortest path:', data.path);
+                                    // Call displayPathOnMap with the path data
+                                    displayPathOnMap(data.path);
+                                })
+                                .catch(error => {
+                                    console.error('Error fetching shortest path:', error);
+                                });
+                        } else {
+                            alert("Destination not found. Please check your input.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching geocode data:", error);
+                        alert("There was a problem searching for the destination.");
+                    });
+            },
+            (error) => {
+                console.error('Error getting current location:', error.message);
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 10000,
+            }
+        );
+    } else {
+        console.warn('Geolocation is not supported by this browser.');
+    }
+}
+
+// Zeige Route auf Karte an
+function displayPathOnMap(path) {
+    if (!path) {
+        alert("No path found.");
+        return;
+    }
+
+    // Clear existing path if any
+    if (window.currentPathLayer) {
+        map.removeLayer(window.currentPathLayer);
+    }
+
+    // Convert path to LatLng coordinates
+    const latLngs = path.map(node => [node.lat, node.lon]);
+
+    // Create a polyline and add it to the map
+    window.currentPathLayer = L.polyline(latLngs, { color: 'blue' }).addTo(map);
+
+    // Fit the map to the polyline bounds
+    map.fitBounds(window.currentPathLayer.getBounds());
+}
 
 // Menü-Interaktion sicherstellen
 const menuToggle = document.getElementById('menu-toggle');
@@ -160,7 +265,7 @@ const markers = L.markerClusterGroup({
         // Benutzerdefiniertes Cluster-Icon
         return L.divIcon({
             html: `
-        <img src="obstacle_icon.svg" style="width: 30px; height: 30px;" />
+        <img src="./static/obstacle_icon.svg" style="width: 30px; height: 30px;" />
         <span style="position: absolute; top: 5px; left: 5px; color: white; font-size: 14px;">${cluster.getChildCount()}</span>
       `,
             className: 'custom-cluster-icon',
@@ -179,7 +284,7 @@ fetch('https://www.ogd.stadt-zuerich.ch/wfs/geoportal/ZueriACT_barrierefreie_Mob
                 // Benutze dein benutzerdefiniertes Icon für einzelne Marker
                 return L.marker(latlng, {
                     icon: L.icon({
-                        iconUrl: 'obstacle_icon.svg', // Pfad zu deinem SVG
+                        iconUrl: "./static/obstacle_icon.svg", // Pfad zu deinem SVG
                         iconSize: [25, 25],
                         iconAnchor: [12, 12]
                     })
@@ -220,17 +325,16 @@ if ("geolocation" in navigator) {
             if (!map.currentLocationMarker) {
                 // Erstelle einen neuen Marker, falls keiner existiert
                 map.currentLocationMarker = L.marker([lat, lon], {icon: locationIcon}).addTo(map);
+                // Zentriere die Karte auf den aktuellen Standort nur einmal
+                map.setView([lat, lon], 15);
             } else {
                 // Aktualisiere den bestehenden Marker
                 map.currentLocationMarker.setLatLng([lat, lon]);
             }
-
-            // Zentriere die Karte auf den aktuellen Standort
-            map.setView([lat, lon], 15);
         },
         (error) => {
             console.error("Fehler bei der Standortabfrage:", error.message);
-            alert("Standort konnte nicht abgerufen werden. Bitte Standortfreigabe aktivieren.");
+            // Handle the error silently without alerting the user
         },
         {
             enableHighAccuracy: true,
@@ -239,6 +343,6 @@ if ("geolocation" in navigator) {
         }
     );
 } else {
-    alert("Geolocation wird von diesem Browser nicht unterstützt.");
+    console.warn("Geolocation wird von diesem Browser nicht unterstützt.");
+    // Handle the lack of geolocation support silently
 }
-

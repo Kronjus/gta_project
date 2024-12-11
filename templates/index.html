@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
 <header>
@@ -42,12 +42,19 @@
 <div id="filters">
     <input type="checkbox" id="show-obstacles" checked>
     <label for="show-obstacles">Hindernisse anzeigen</label>
+    <br>
+    <br>
+    <label class="switch">
+        <input id="accessibility-switch" type="checkbox">
+        <span class="slider round"></span>
+    </label>
+    <p>Eingeschränkte Mobilität</p>
+    <br>
+    <button id="navigation-button" class="nav-btn">
+        <i class="fa fa-play"></i>
+    </button>
 </div>
 
-<label class="switch">
-    <input type="checkbox">
-    <span class="slider round"></span>
-</label>
 
 <footer>
     <p>© Gruppe 1 | IKG @ ETH Zürich</p>
