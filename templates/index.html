@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barrierefreie Navigation</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -43,6 +43,11 @@
     <input type="checkbox" id="show-obstacles" checked>
     <label for="show-obstacles">Hindernisse anzeigen</label>
 </div>
+
+<label class="switch">
+    <input type="checkbox">
+    <span class="slider round"></span>
+</label>
 
 <footer>
     <p>© Gruppe 1 | IKG @ ETH Zürich</p>
