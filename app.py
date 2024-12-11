@@ -35,6 +35,13 @@ def create_graph(nodes, edges):
 
 def find_shortest_path(G, start_lon, start_lat, end_lon, end_lat):
     try:
+        logging.debug(f"Start coordinates: ({start_lat}, {start_lon})")
+        logging.debug(f"End coordinates: ({end_lat}, {end_lon})")
+
+        # Ensure the coordinates are valid numbers
+        if not all(isinstance(coord, (int, float)) for coord in [start_lon, start_lat, end_lon, end_lat]):
+            raise ValueError("One or more coordinates are not valid numbers")
+
         start_node = ox.nearest_nodes(G, start_lon, start_lat)
         logging.debug(f"Start node: {start_node}")
 
@@ -45,7 +52,11 @@ def find_shortest_path(G, start_lon, start_lat, end_lon, end_lat):
         logging.debug(f"Shortest path: {path}")
 
         return path
+    except ValueError as e:
+        logging.error(f"Invalid coordinate value: {e}")
+        return None
     except nx.NetworkXNoPath:
+        logging.error("No path found between the specified nodes")
         return None
 
 
@@ -56,10 +67,10 @@ def home():  # put application's code here
 @app.route('/shortest-path', methods=['POST'])
 def shortest_path():
     data = request.json
-    start_lat = data['start_lat']
-    start_lon = data['start_lon']
-    end_lat = data['end_lat']
-    end_lon = data['end_lon']
+    start_lat = float(data['start_lat'])
+    start_lon = float(data['start_lon'])
+    end_lat = float(data['end_lat'])
+    end_lon = float(data['end_lon'])
 
     logging.debug(f"Received data: {data}")
 
@@ -67,8 +78,14 @@ def shortest_path():
     G = create_graph(nodes, edges)
     path = find_shortest_path(G, start_lon, start_lat, end_lon, end_lat)
 
-    return jsonify({'path': path})
+    if path is None:
+        return jsonify({'error': 'No path found'}), 404
+
+    # Convert path to list of nodes with lat and lon properties
+    path_coords = [{'lat': G.nodes[node]['y'], 'lon': G.nodes[node]['x']} for node in path]
+
+    return jsonify({'path': path_coords})
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)

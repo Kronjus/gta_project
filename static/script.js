@@ -8,12 +8,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 
-
 // Benutzerdefiniertes Icon laden
 const obstacleIcon = L.icon({
-  iconUrl: "./static/obstacle_icon.svg", // Icon-Pfad im selben Verzeichnis
-  iconSize: [25, 25],          // Größe des Icons
-  iconAnchor: [12, 12]         // Position des Ankers
+    iconUrl: "./static/obstacle_icon.svg", // Icon-Pfad im selben Verzeichnis
+    iconSize: [25, 25],          // Größe des Icons
+    iconAnchor: [12, 12]         // Position des Ankers
 });
 
 document.getElementById('navigation-button').addEventListener('click', () => {
@@ -33,6 +32,7 @@ function getLocations() {
     console.log('Getting current location and destination...');
     const searchInput = document.getElementById('search-input');
     const destination = searchInput.value.trim();
+    console.log('Destination:', destination);
 
     if (!destination) {
         alert("Please enter a destination.");
@@ -44,9 +44,11 @@ function getLocations() {
             (position) => {
                 const startLat = position.coords.latitude;
                 const startLon = position.coords.longitude;
+                console.log('Current location coordinates:', startLat, startLon);
 
                 // Geocode the destination to get its coordinates
                 const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
+                console.log('Geocode URL:', geocodeUrl);
 
                 fetch(geocodeUrl)
                     .then(response => response.json())
@@ -54,7 +56,7 @@ function getLocations() {
                         if (data.length > 0) {
                             const endLat = data[0].lat;
                             const endLon = data[0].lon;
-
+                            console.log('Destination coordinates:', endLat, endLon);
                             fetch('/shortest-path', {
                                 method: 'POST',
                                 headers: {
@@ -67,17 +69,32 @@ function getLocations() {
                                     end_lon: endLon,
                                 }),
                             })
-                                .then(response => response.json())
+                                .then(response => {
+                                    if (!response.ok) {
+                                        throw new Error('Network response was not ok');
+                                    }
+                                    return response.json();
+                                })
                                 .then(data => {
-                                    console.log('Shortest path:', data.path);
-                                    // Call displayPathOnMap with the path data
-                                    displayPathOnMap(data.path);
+                                    if (data.error) {
+                                        console.error('Error fetching shortest path:', data.error);
+                                        alert('Error fetching shortest path: ' + data.error);
+                                        return;
+                                    }
+
+                                    const path = data.path;
+                                    if (!Array.isArray(path) || path.length === 0) {
+                                        throw new Error('Invalid path data');
+                                    }
+
+                                    // Use the path data to create a polyline on the map
+                                    const latlngs = path.map(node => [node.lat, node.lon]);
+                                    const polyline = L.polyline(latlngs, {color: 'blue'}).addTo(map);
                                 })
                                 .catch(error => {
                                     console.error('Error fetching shortest path:', error);
+                                    alert('Error fetching shortest path: ' + error.message);
                                 });
-                        } else {
-                            alert("Destination not found. Please check your input.");
                         }
                     })
                     .catch(error => {
@@ -89,9 +106,9 @@ function getLocations() {
                 console.error('Error getting current location:', error.message);
             },
             {
-                enableHighAccuracy: true,
+                enableHighAccuracy: false,
                 maximumAge: 0,
-                timeout: 10000,
+                timeout: Infinity, // Set a timeout of 5 seconds
             }
         );
     } else {
@@ -115,7 +132,7 @@ function displayPathOnMap(path) {
     const latLngs = path.map(node => [node.lat, node.lon]);
 
     // Create a polyline and add it to the map
-    window.currentPathLayer = L.polyline(latLngs, { color: 'blue' }).addTo(map);
+    window.currentPathLayer = L.polyline(latLngs, {color: 'blue'}).addTo(map);
 
     // Fit the map to the polyline bounds
     map.fitBounds(window.currentPathLayer.getBounds());
