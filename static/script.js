@@ -7,11 +7,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
+
+
 // Benutzerdefiniertes Icon laden
 const obstacleIcon = L.icon({
-    iconUrl: 'obstacle_icon.svg', // Icon-Pfad im selben Verzeichnis
-    iconSize: [25, 25],          // Größe des Icons
-    iconAnchor: [12, 12]         // Position des Ankers
+  iconUrl: "{{ url_for('static', filename='obstacle_icon.svg') }}", // Icon-Pfad im selben Verzeichnis
+  iconSize: [25, 25],          // Größe des Icons
+  iconAnchor: [12, 12]         // Position des Ankers
 });
 
 // Menü-Interaktion sicherstellen
