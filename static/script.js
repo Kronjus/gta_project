@@ -338,20 +338,31 @@ if ("geolocation" in navigator) {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
 
-            // Marker für den aktuellen Standort erstellen oder aktualisieren
+            // Send the current location to the server
+            fetch('/save-location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: 1, // Replace with actual user ID
+                    lat: lat,
+                    lon: lon,
+                }),
+            }).catch(error => {
+                console.error('Error saving location:', error);
+            });
+
+            // Marker for the current location
             if (!map.currentLocationMarker) {
-                // Erstelle einen neuen Marker, falls keiner existiert
                 map.currentLocationMarker = L.marker([lat, lon], {icon: locationIcon}).addTo(map);
-                // Zentriere die Karte auf den aktuellen Standort nur einmal
                 map.setView([lat, lon], 15);
             } else {
-                // Aktualisiere den bestehenden Marker
                 map.currentLocationMarker.setLatLng([lat, lon]);
             }
         },
         (error) => {
-            console.error("Fehler bei der Standortabfrage:", error.message);
-            // Handle the error silently without alerting the user
+            console.error('Error getting current location:', error.message);
         },
         {
             enableHighAccuracy: true,
