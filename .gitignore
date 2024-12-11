@@ -5,3 +5,4 @@ instance/*
 .env
 
 /algorithms/cache/*
+/algorithms/*.ipynb
