@@ -16,12 +16,7 @@ const obstacleIcon = L.icon({
 });
 
 document.getElementById('navigation-button').addEventListener('click', () => {
-    const checkbox = document.getElementById('accessibility-switch');
-    if (checkbox.checked) {
-        console.log('TBI: Implement restricted navigation');
-    } else {
-        getLocations();
-    }
+    getLocations();
 });
 
 // Uneingeschränkte Navigation
@@ -67,6 +62,7 @@ function getLocations() {
                                     start_lon: startLon,
                                     end_lat: endLat,
                                     end_lon: endLon,
+                                    accessibility: document.getElementById('accessibility-switch').checked,
                                 }),
                             })
                                 .then(response => {
