@@ -53,6 +53,23 @@
     <button id="navigation-button" class="nav-btn">
         <i class="fa fa-play"></i>
     </button>
+    <button id="stop-navigation" class="stop-btn">
+        <i class="fa fa-pause"></i>
+    </button>
+    <br>
+    <button id="obstacle" class="obstacle-btn">
+        <i class="fa fa-exclamation-triangle"></i>
+    </button>
+</div>
+
+<div id="obstacle-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Wie einschränkend ist das Hindernis?</h2>
+        <label for="severity">Einschränkung (1-5):</label>
+        <input type="number" id="severity" name="severity" min="1" max="5">
+        <button id="submit-obstacle">Hindernis melden</button>
+    </div>
 </div>
 
 
