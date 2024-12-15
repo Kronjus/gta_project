@@ -1,12 +1,107 @@
-// Initialisiere die Karte und setze den Fokus auf Zürich
+let watchId = null;
+let isNavigating = false;
+let targetLat = null;
+let targetLon = null;
+let currentPathLayer = null; // Store the current path layer
+let currentMarker = null; // Store the current marker
+let currentLat = null;
+let currentLon = null;
+let obstaclesLayer = null; // Store the obstacles layer
+
+// Initialize the map and set the view to Zurich
 const map = L.map('map').setView([47.3769, 8.5417], 13);
 
-// Füge OpenStreetMap-Tiles hinzu
+// Add OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
+// Create a MarkerClusterGroup with custom cluster icons
+const markers = L.markerClusterGroup({
+    spiderfyOnMaxZoom: false,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: false,
+    iconCreateFunction: function (cluster) {
+        // Custom cluster icon
+        return L.divIcon({
+            html: `
+                <img src="./static/obstacle_icon.svg" style="width: 30px; height: 30px;" />
+                <span style="position: absolute; top: 5px; left: 5px; color: white; font-size: 14px;">${cluster.getChildCount()}</span>
+            `,
+            className: 'custom-cluster-icon',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+    }
+});
+
+// Add the markers cluster group to the map
+map.addLayer(markers);
+
+// Function to show WMS obstacles
+function showWMSObstacles() {
+    const wmsUrl = 'https://baug-ikg-gis-01.ethz.ch:8443/geoserver/wms';
+    const wmsParams = {
+        service: 'WFS',
+        version: '1.1.0',
+        request: 'GetFeature',
+        typeName: 'obstacles', // Replace with your actual layer name
+        outputFormat: 'application/json'
+    };
+    const url = `${wmsUrl}?${new URLSearchParams(wmsParams).toString()}`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            obstaclesLayer = L.geoJSON(data, {
+                pointToLayer: function (feature, latlng) {
+                    // Use the custom icon for individual markers
+                    const marker = L.marker(latlng, {
+                        icon: L.icon({
+                            iconUrl: "./static/obstacle_icon.svg", // Path to your SVG
+                            iconSize: [25, 25],
+                            iconAnchor: [12, 12]
+                        })
+                    });
+
+                    // Add click event listener to the marker
+                    marker.on('click', function() {
+                        const properties = feature.properties;
+                        const popupContent = `
+                            <strong>Obstacle Information</strong><br>
+                            Severity: ${properties.severity}<br>
+                            Coordinates: ${latlng.lat}, ${latlng.lng}
+                        `;
+                        L.popup()
+                            .setLatLng(latlng)
+                            .setContent(popupContent)
+                            .openOn(map);
+                    });
+
+                    return marker;
+                }
+            });
+            markers.addLayer(obstaclesLayer); // Add obstacles to the markers cluster group
+        })
+        .catch(error => console.error('Error loading WMS GeoJSON data:', error));
+}
+
+// Function to hide WMS obstacles
+function hideWMSObstacles() {
+    if (obstaclesLayer) {
+        markers.removeLayer(obstaclesLayer); // Remove obstacles from the markers cluster group
+    }
+}
+
+// Add event listener to the "Hindernisse anzeigen" checkbox
+document.getElementById('show-obstacles').addEventListener('change', (event) => {
+    if (event.target.checked) {
+        showWMSObstacles();
+    } else {
+        hideWMSObstacles();
+    }
+});
 
 // Benutzerdefiniertes Icon laden
 const obstacleIcon = L.icon({
@@ -55,58 +150,47 @@ submitBtn.addEventListener('click', () => {
         alert('Bitte wähle eine Schweregrad zwischen 1 und 5 aus.');
         return;
     }
+    console.log('Recording obstacle with severity:', severity);
     recordObstacle(severity);
+    console.log('Obstacle recorded.');
     modal.style.display = 'none';
 });
 
 // Hindernis hinzufügen
 function recordObstacle(severity) {
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-
-                // Send the obstacle location to the server
-                fetch('/save-obstacle', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        lat: lat,
-                        lon: lon,
-                        severity: severity,
-                    }),
-                }).then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                }).then(data => {
-                    if (data.error) {
-                        console.error('Error saving obstacle:', data.error);
-                        alert('Error saving obstacle: ' + data.error);
-                    } else {
-                        // Add a marker for the obstacle
-                        L.marker([lat, lon], {icon: obstacleIcon}).addTo(map).bindPopup('Hindernis').openPopup();
-                    }
-                }).catch(error => {
-                    console.error('Error saving obstacle:', error);
-                    alert('Error saving obstacle: ' + error.message);
-                });
+    console.log('Recording obstacle with severity:', severity);
+    if (currentLat !== null && currentLon !== null) {
+        console.log('Current location coordinates:', currentLat, currentLon);
+        // Send the obstacle location to the server
+        fetch('/gta_project/save-obstacle', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             },
-            (error) => {
-                console.error('Error getting current location:', error.message);
-            },
-            {
-                enableHighAccuracy: false,
-                maximumAge: 0,
-                timeout: Infinity, // Set a timeout of 5 seconds
+            body: JSON.stringify({
+                lat: currentLat,
+                lon: currentLon,
+                severity: severity,
+            }),
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
-        );
+            return response.json();
+        }).then(data => {
+            if (data.error) {
+                console.error('Error saving obstacle:', data.error);
+                alert('Error saving obstacle: ' + data.error);
+            } else {
+                // Add a marker for the obstacle
+                L.marker([currentLat, currentLon], {icon: obstacleIcon}).addTo(map).bindPopup('Hindernis').openPopup();
+            }
+        }).catch(error => {
+            console.error('Error saving obstacle:', error);
+            alert('Error saving obstacle: ' + error.message);
+        });
     } else {
-        console.warn('Geolocation is not supported by this browser.');
+        console.warn('Current location is not available.');
     }
 }
 
@@ -127,13 +211,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c; // Distance in meters
 }
 
-let watchId = null;
-let isNavigating = false;
-
 document.getElementById('navigation-button').addEventListener('click', () => {
     if (!isNavigating) {
         isNavigating = true;
         startNavigation();
+        alert("Navigation started.");
     }
 });
 
@@ -141,10 +223,12 @@ document.getElementById('stop-navigation').addEventListener('click', () => {
     if (isNavigating) {
         isNavigating = false;
         stopNavigation();
+        alert("Navigation stopped.");
     }
 });
 
 function startNavigation() {
+    isNavigating = true;
     const searchInput = document.getElementById('search-input');
     const destination = searchInput.value.trim();
 
@@ -153,44 +237,29 @@ function startNavigation() {
         return;
     }
 
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const startLat = position.coords.latitude;
-                const startLon = position.coords.longitude;
+    if (currentLat !== null && currentLon !== null) {
+        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
 
-                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
-
-                fetch(geocodeUrl)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.length > 0) {
-                            const targetLat = data[0].lat;
-                            const targetLon = data[0].lon;
-                            updatePath(startLat, startLon, targetLat, targetLon);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error fetching geocode data:", error);
-                        alert("There was a problem searching for the destination.");
-                    });
-            },
-            (error) => {
-                console.error('Error getting current location:', error.message);
-            },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: Infinity,
-            }
-        );
+        fetch(geocodeUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    targetLat = data[0].lat;
+                    targetLon = data[0].lon;
+                    updatePath(currentLat, currentLon, targetLat, targetLon);
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching geocode data:", error);
+                alert("There was a problem searching for the destination.");
+            });
     } else {
-        console.warn('Geolocation is not supported by this browser.');
+        console.warn('Current location is not available.');
     }
 }
 
 function updatePath(startLat, startLon, endLat, endLon) {
-    fetch('/shortest-path', {
+    fetch('/gta_project/shortest-path', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -241,7 +310,7 @@ function startRecordingTrajectory() {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
 
-                fetch('/save-location', {
+                fetch('/gta_project/save-location', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -261,6 +330,15 @@ function startRecordingTrajectory() {
                 } else {
                     map.currentLocationMarker.setLatLng([lat, lon]);
                 }
+
+                // Check if the user has reached the destination
+                if (targetLat !== null && targetLon !== null) {
+                    const distanceToTarget = calculateDistance(lat, lon, targetLat, targetLon);
+                    if (distanceToTarget < 5) { // Adjust the threshold as needed
+                        stopNavigation(true);
+                        alert("You have reached your destination.");
+                    }
+                }
             },
             (error) => {
                 console.error('Error getting current location:', error.message);
@@ -276,15 +354,14 @@ function startRecordingTrajectory() {
     }
 }
 
-function stopRecordingTrajectory() {
-    if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-    }
-}
-
-function stopNavigation() {
+function stopNavigation(reachedDestination = false) {
+    isNavigating = false;
     stopRecordingTrajectory();
+    // Clear the navigation line
+    if (currentPathLayer) {
+        map.removeLayer(currentPathLayer);
+        currentPathLayer = null;
+    }
     // Additional logic to handle stopping navigation, e.g., clearing the map
     if (map.currentLocationMarker) {
         map.removeLayer(map.currentLocationMarker);
@@ -292,11 +369,15 @@ function stopNavigation() {
     }
 
     // Call the stop-navigation endpoint
-    fetch('/stop-navigation', {
+    fetch('/gta_project/stop-navigation', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+            reachedDestination: reachedDestination,
+            accessibility: document.getElementById('accessibility-switch').checked
+        })
     }).then(response => {
         if (!response.ok) {
             throw new Error('Network response was not ok');
@@ -313,65 +394,40 @@ function stopNavigation() {
     });
 }
 
-let targetLat = null;
-let targetLon = null;
 
-
-let currentPathLayer = null; // Store the current path layer
 // Hole aktuelle Position und Zielort
 function getLocations() {
-    console.log('Getting current location and destination...');
     const searchInput = document.getElementById('search-input');
     const destination = searchInput.value.trim();
-    console.log('Destination:', destination);
 
     if (!destination) {
         alert("Please enter a destination.");
         return;
     }
 
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const startLat = position.coords.latitude;
-                const startLon = position.coords.longitude;
-                console.log('Current location coordinates:', startLat, startLon);
+    if (currentLat !== null && currentLon !== null) {
+        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
 
-                // Geocode the destination to get its coordinates
-                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
-                console.log('Geocode URL:', geocodeUrl);
-
-                fetch(geocodeUrl)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.length > 0) {
-                            targetLat = data[0].lat;
-                            targetLon = data[0].lon;
-                            console.log('Destination coordinates:', targetLat, targetLon);
-                            updatePath(startLat, startLon, targetLat, targetLon);
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error fetching geocode data:", error);
-                        alert("There was a problem searching for the destination.");
-                    });
-            },
-            (error) => {
-                console.error('Error getting current location:', error.message);
-            },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: Infinity,
-            }
-        );
+        fetch(geocodeUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    targetLat = data[0].lat;
+                    targetLon = data[0].lon;
+                    updatePath(currentLat, currentLon, targetLat, targetLon);
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching geocode data:", error);
+                alert("There was a problem searching for the destination.");
+            });
     } else {
-        console.warn('Geolocation is not supported by this browser.');
+        console.warn('Current location is not available.');
     }
 }
 
 function updatePath(startLat, startLon, endLat, endLon) {
-    fetch('/shortest-path', {
+    fetch('/gta_project/shortest-path', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -420,13 +476,15 @@ function updatePath(startLat, startLon, endLat, endLon) {
 // Watch the user's position and update the path if necessary
 navigator.geolocation.watchPosition(
     (position) => {
-        const currentLat = position.coords.latitude;
-        const currentLon = position.coords.longitude;
+        if (isNavigating) {
+            currentLat = position.coords.latitude;
+            currentLon = position.coords.longitude;
 
-        if (targetLat !== null && targetLon !== null) {
-            const distanceToTarget = calculateDistance(currentLat, currentLon, targetLat, targetLon);
-            if (distanceToTarget > 5) {
-                updatePath(currentLat, currentLon, targetLat, targetLon);
+            if (targetLat !== null && targetLon !== null) {
+                const distanceToTarget = calculateDistance(currentLat, currentLon, targetLat, targetLon);
+                if (distanceToTarget > 5) {
+                    updatePath(currentLat, currentLon, targetLat, targetLon);
+                }
             }
         }
     },
@@ -569,10 +627,8 @@ function clearSuggestions() {
     }
 }
 
-let currentMarker = null; // Store the current marker
 
 function findLocation(location) {
-    // Geocoding-API verwenden, um den Ort zu suchen (z. B. Nominatim OpenStreetMap API)
     const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`;
 
     fetch(geocodeUrl)
@@ -582,15 +638,12 @@ function findLocation(location) {
                 const lat = data[0].lat;
                 const lon = data[0].lon;
 
-                // Setze die Karte auf die gefundene Position
                 map.setView([lat, lon], 15);
 
-                // Entferne den vorherigen Marker, falls vorhanden
                 if (currentMarker) {
                     map.removeLayer(currentMarker);
                 }
 
-                // Markiere den Zielort
                 currentMarker = L.marker([lat, lon]).addTo(map).bindPopup(`Ziel: ${location}`).openPopup();
             } else {
                 alert("Ort nicht gefunden. Bitte überprüfe deine Eingabe.");
@@ -603,46 +656,53 @@ function findLocation(location) {
 }
 
 
-// Erstelle eine MarkerClusterGroup mit angepassten Cluster-Icons
-const markers = L.markerClusterGroup({
-    spiderfyOnMaxZoom: false,
-    showCoverageOnHover: false,
-    zoomToBoundsOnClick: false,
-    iconCreateFunction: function (cluster) {
-        // Benutzerdefiniertes Cluster-Icon
-        return L.divIcon({
-            html: `
-        <img src="./static/obstacle_icon.svg" style="width: 30px; height: 30px;" />
-        <span style="position: absolute; top: 5px; left: 5px; color: white; font-size: 14px;">${cluster.getChildCount()}</span>
-      `,
-            className: 'custom-cluster-icon',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
+
+
+// Add the markers cluster group to the map
+map.addLayer(markers);
+
+// Function to show obstacles
+function showObstacles() {
+    if (!obstaclesLayer) {
+        // Load the ZueriACT GeoJSON data and add it to the map
+        fetch('https://www.ogd.stadt-zuerich.ch/wfs/geoportal/ZueriACT_barrierefreie_Mobilitaet?service=WFS&version=1.1.0&request=GetFeature&outputFormat=GeoJSON&typename=zueriact_daten_aufbereitet')
+            .then(response => response.json())
+            .then(data => {
+                obstaclesLayer = L.geoJSON(data, {
+                    pointToLayer: function (feature, latlng) {
+                        // Use the custom icon for individual markers
+                        return L.marker(latlng, {
+                            icon: L.icon({
+                                iconUrl: "./static/obstacle_icon.svg", // Path to your SVG
+                                iconSize: [25, 25],
+                                iconAnchor: [12, 12]
+                            })
+                        });
+                    }
+                });
+                markers.addLayer(obstaclesLayer); // Add obstacles to the markers cluster group
+            })
+            .catch(error => console.error('Error loading ZueriACT GeoJSON data:', error));
+    } else {
+        markers.addLayer(obstaclesLayer); // Add obstacles to the markers cluster group
+    }
+}
+
+// Function to hide obstacles
+function hideObstacles() {
+    if (obstaclesLayer) {
+        markers.removeLayer(obstaclesLayer); // Remove obstacles from the markers cluster group
+    }
+}
+
+// Add event listener to the "Hindernisse anzeigen" checkbox
+document.getElementById('show-obstacles').addEventListener('change', (event) => {
+    if (event.target.checked) {
+        showObstacles();
+    } else {
+        hideObstacles();
     }
 });
-
-// Lade die ZueriACT GeoJSON-Daten
-fetch('https://www.ogd.stadt-zuerich.ch/wfs/geoportal/ZueriACT_barrierefreie_Mobilitaet?service=WFS&version=1.1.0&request=GetFeature&outputFormat=GeoJSON&typename=zueriact_daten_aufbereitet')
-    .then(response => response.json())
-    .then(data => {
-        L.geoJSON(data, {
-            pointToLayer: function (feature, latlng) {
-                // Benutze dein benutzerdefiniertes Icon für einzelne Marker
-                return L.marker(latlng, {
-                    icon: L.icon({
-                        iconUrl: "./static/obstacle_icon.svg", // Pfad zu deinem SVG
-                        iconSize: [25, 25],
-                        iconAnchor: [12, 12]
-                    })
-                });
-            }
-        }).addTo(markers);
-    })
-    .catch(error => console.error('Fehler beim Laden der ZueriACT GeoJSON-Daten:', error));
-
-// Füge den Cluster-Layer zur Karte hinzu
-map.addLayer(markers);
 
 
 //setInterval(updateInfo, 1000); // Aktualisiere jede Sekunde
@@ -655,39 +715,45 @@ const locationIcon = L.divIcon({
       <path d="M12 2a9 9 0 0 1 9 9c0 5.25-9 11-9 11S3 16.25 3 11a9 9 0 0 1 9-9z"></path>
       <circle cx="12" cy="11" r="3" fill="white"></circle>
     </svg>
-  `,
+    `,
     iconSize: [30, 30],
     iconAnchor: [15, 30], // Ankerpunkt am unteren Ende des Symbols
 });
+
 
 // Geolocation aktivieren und Standort tracken
 if ("geolocation" in navigator) {
     // Verfolge den Standort in Echtzeit
     navigator.geolocation.watchPosition(
         (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
+            currentLat = position.coords.latitude;
+            currentLon = position.coords.longitude;
 
             // Send the current location to the server
-            fetch('/save-location', {
+            fetch('/gta_project/save-location', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    lat: lat,
-                    lon: lon,
+                    lat: currentLat,
+                    lon: currentLon,
                 }),
-            }).catch(error => {
-                console.error('Error saving location:', error);
-            });
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Location saved:', data);
+                })
+                .catch(error => {
+                    console.error('Error saving location:', error);
+                });
 
             // Marker for the current location
             if (!map.currentLocationMarker) {
-                map.currentLocationMarker = L.marker([lat, lon], {icon: locationIcon}).addTo(map);
-                map.setView([lat, lon], 15);
+                map.currentLocationMarker = L.marker([currentLat, currentLon], {icon: locationIcon}).addTo(map);
+                map.setView([currentLat, currentLon], 15);
             } else {
-                map.currentLocationMarker.setLatLng([lat, lon]);
+                map.currentLocationMarker.setLatLng([currentLat, currentLon]);
             }
         },
         (error) => {

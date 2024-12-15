@@ -6,10 +6,3 @@ instance/*
 
 /algorithms/cache/*
 /algorithms/*.ipynb
-
-.vercel
-/algorithms/test_nb.ipynb
-/algorithms/rasterisation.ipynb
-/algorithms/cache/*
-/algorithms/data/zurich_walk.graphml
-/algorithms/algorithm_test.ipynb
