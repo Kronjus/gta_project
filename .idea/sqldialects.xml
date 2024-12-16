@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="remoteDeploymentFS://&lt;b2d322bf-63fe-4ce8-9135-b64716a2af3e&gt;/gta_project/app.py" dialect="GenericSQL" />
     <file url="PROJECT" dialect="PostgreSQL" />
   </component>
 </project>

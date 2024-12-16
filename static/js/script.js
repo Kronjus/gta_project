@@ -27,7 +27,7 @@ const markers = L.markerClusterGroup({
         // Custom cluster icon
         return L.divIcon({
             html: `
-                <img src="./static/obstacle_icon.svg" style="width: 30px; height: 30px;" />
+                <img src="./static/images/obstacle_icon.svg" style="width: 30px; height: 30px;" />
                 <span style="position: absolute; top: 5px; left: 5px; color: white; font-size: 14px;">${cluster.getChildCount()}</span>
             `,
             className: 'custom-cluster-icon',
