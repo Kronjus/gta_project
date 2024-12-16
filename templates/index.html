@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Barrierefreie Navigation</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
 <header>
@@ -41,17 +41,41 @@
 <div id="filters">
     <input type="checkbox" id="show-obstacles" checked>
     <label for="show-obstacles">Hindernisse anzeigen</label>
+    <br>
+    <br>
+    <label class="switch">
+        <input id="accessibility-switch" type="checkbox">
+        <span class="slider round"></span>
+    </label>
+    <p>Eingeschränkte Mobilität</p>
+    <br>
+    <button id="navigation-button" class="nav-btn">
+        <i class="fa fa-play"></i>
+    </button>
+    <button id="stop-navigation" class="stop-btn">
+        <i class="fa fa-pause"></i>
+    </button>
+    <br>
+    <button id="obstacle" class="obstacle-btn">
+        <i class="fa fa-exclamation-triangle"></i>
+    </button>
 </div>
 
-<label class="switch">
-    <input type="checkbox">
-    <span class="slider round"></span>
-</label>
+<div id="obstacle-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Wie einschränkend ist das Hindernis?</h2>
+        <label for="severity">Einschränkung (1-5):</label>
+        <input type="number" id="severity" name="severity" min="1" max="5">
+        <button id="submit-obstacle">Hindernis melden</button>
+    </div>
+</div>
+
 
 <footer>
     <p>© Gruppe 1 | IKG @ ETH Zürich</p>
 </footer>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/script.js', v=time.time()) }}"></script>
 </body>
 </html>
