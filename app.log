@@ -1,0 +1,6 @@
+2024-12-11 15:06:47,595 INFO: * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+2024-12-11 15:07:34,614 INFO: * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+2024-12-11 15:08:19,413 INFO:127.0.0.1 - - [11/Dec/2024 15:08:19] "GET / HTTP/1.1" 200 -
+2024-12-11 15:08:19,615 INFO:127.0.0.1 - - [11/Dec/2024 15:08:19] "[36mGET /static/style.css HTTP/1.1[0m" 304 -
+2024-12-11 15:08:19,618 INFO:127.0.0.1 - - [11/Dec/2024 15:08:19] "[36mGET /static/script.js HTTP/1.1[0m" 304 -
+2024-12-11 15:08:20,383 INFO:127.0.0.1 - - [11/Dec/2024 15:08:20] "[36mGET /static/obstacle_icon.svg HTTP/1.1[0m" 304 -
