@@ -13,7 +13,7 @@ const pool = new pg.Pool(config);
 
 pool.connect((err, client, done) => {
     if (err) throw err;
-    client.query('SELECT * FROM gta_p1.user', (err, res) => {
+    client.query('SELECT * FROM gta_p1.users', (err, res) => {
         if (err) {
             console.log(err.stack);
         } else {

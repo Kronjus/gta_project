@@ -2,9 +2,9 @@ flask
 numpy
 requests
 sqlalchemy
-psycopg2-binary
 scikit-learn
 geopandas
 osmnx
 networkx
 shapely
+python-dotenv

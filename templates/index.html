@@ -1,20 +1,21 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barrierefreie Navigation</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Accessible Navigation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=time.time()) }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
     <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 </head>
 <body>
 <header>
-    <h1>Barrierefreie Navigation</h1>
+    <h1>Accessible Navigation</h1>
     <button id="menu-toggle" class="menu-btn">&#9776;</button>
 </header>
 
@@ -22,9 +23,9 @@
 <nav id="side-menu" class="side-menu">
     <button id="close-menu" class="close-btn">&times;</button>
     <ul>
-        <li><a href="#">Karte</a></li>
-        <li><a href="#">Statistiken</a></li>
-        <li><a href="#">Informationen & Kontakt</a></li>
+        <li><a id="map-button" href="#">Map</a></li>
+        <li><a href="#" id="statistics-link">Statistics</a></li>
+        <li><a href="#">Information & Contact</a></li>
     </ul>
 </nav>
 
@@ -34,46 +35,54 @@
 </div>
 
 <div id="search-bar">
-    <input type="text" id="search-input" placeholder="Zielort eingeben..."/>
+    <input type="text" id="search-input" placeholder="Enter Destination..."/>
     <button id="search-btn">🔍</button>
 </div>
 
 <div id="filters">
-    <input type="checkbox" id="show-obstacles" checked>
-    <label for="show-obstacles">Hindernisse anzeigen</label>
+    <input type="checkbox" id="show-obstacles">
+    <label for="show-obstacles">Show Obstacles</label>
     <br>
     <br>
     <label class="switch">
         <input id="accessibility-switch" type="checkbox">
         <span class="slider round"></span>
     </label>
-    <p>Eingeschränkte Mobilität</p>
+    <p>Reduced Mobility</p>
     <br>
     <button id="navigation-button" class="nav-btn">
         <i class="fa fa-play"></i>
     </button>
+    <p>Start Navigating</p>
     <button id="stop-navigation" class="stop-btn">
         <i class="fa fa-pause"></i>
     </button>
+    <p>Stop Navigating</p>
     <br>
     <button id="obstacle" class="obstacle-btn">
         <i class="fa fa-exclamation-triangle"></i>
     </button>
+    <p>Record Obstacle</p>
 </div>
 
 <div id="obstacle-modal" class="modal">
     <div class="modal-content">
         <span class="close">&times;</span>
-        <h2>Wie einschränkend ist das Hindernis?</h2>
-        <label for="severity">Einschränkung (1-5):</label>
+        <h2>How severe is the obstacle?</h2>
+        <label for="severity">Severity (1-5):</label>
         <input type="number" id="severity" name="severity" min="1" max="5">
-        <button id="submit-obstacle">Hindernis melden</button>
+        <button id="submit-obstacle">Report Obstacle</button>
     </div>
+</div>
+
+<div id="cookie-notification" class="cookie-notification">
+    <p>We use cookies to ensure you get the best experience on our website.</p>
+    <button id="accept-cookies">Accept</button>
 </div>
 
 
 <footer>
-    <p>© Gruppe 1 | IKG @ ETH Zürich</p>
+    <p>© Group 1 | IKG @ ETH Zurich</p>
 </footer>
 
 <script src="{{ url_for('static', filename='js/script.js', v=time.time()) }}"></script>

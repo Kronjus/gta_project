@@ -8,6 +8,8 @@ let currentLat = null;
 let currentLon = null;
 let obstaclesLayer = null; // Store the obstacles layer
 let pathCalculated = false; // Flag to track if the path has been created
+let startTime = null; // Start time for the navigation
+let wmsObstaclesLayer = null; // Store the WMS obstacles layer
 
 // Initialize the map and set the view to Zurich
 const map = L.map('map').setView([47.3769, 8.5417], 13);
@@ -24,8 +26,10 @@ const markers = L.markerClusterGroup({
     showCoverageOnHover: false,
     zoomToBoundsOnClick: false,
     iconCreateFunction: function (cluster) {
-        // Custom cluster icon
-        return L.divIcon({
+        const childMarkers = cluster.getAllChildMarkers();
+        const popupContent = childMarkers.map(marker => `<b>Severity:</b> ${marker.feature.properties.severity}`).join('<br>');
+
+        const clusterIcon = L.divIcon({
             html: `
                 <img src="./static/images/obstacle_icon.svg" style="width: 30px; height: 30px;" />
                 <span style="position: absolute; top: 5px; left: 5px; color: white; font-size: 14px;">${cluster.getChildCount()}</span>
@@ -34,85 +38,19 @@ const markers = L.markerClusterGroup({
             iconSize: [40, 40],
             iconAnchor: [20, 20]
         });
-    }
-});
 
-// Add the markers cluster group to the map
-map.addLayer(markers);
-// Test
-// Function to show WMS obstacles
-function showWMSObstacles() {
-    const wmsUrl = 'https://baug-ikg-gis-01.ethz.ch:8443/geoserver/wms';
-    const wmsParams = {
-        service: 'WFS',
-        version: '1.1.0',
-        request: 'GetFeature',
-        typeName: 'obstacles', // Replace with your actual layer name
-        outputFormat: 'application/json'
-    };
-    const url = `${wmsUrl}?${new URLSearchParams(wmsParams).toString()}`;
+        const clusterMarker = L.marker(cluster.getLatLng(), {icon: clusterIcon});
+        clusterMarker.bindPopup(popupContent);
 
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            obstaclesLayer = L.geoJSON(data, {
-                pointToLayer: function (feature, latlng) {
-                    // Use the custom icon for individual markers
-                    const marker = L.marker(latlng, {
-                        icon: L.icon({
-                            iconUrl: "./static/obstacle_icon.svg", // Path to your SVG
-                            iconSize: [25, 25],
-                            iconAnchor: [12, 12]
-                        })
-                    });
-
-                    // Add click event listener to the marker
-                    marker.on('click', function () {
-                        const properties = feature.properties;
-                        const popupContent = `
-                            <strong>Obstacle Information</strong><br>
-                            Severity: ${properties.severity}<br>
-                            Coordinates: ${latlng.lat}, ${latlng.lng}
-                        `;
-                        L.popup()
-                            .setLatLng(latlng)
-                            .setContent(popupContent)
-                            .openOn(map);
-                    });
-
-                    return marker;
-                }
-            });
-            markers.addLayer(obstaclesLayer); // Add obstacles to the markers cluster group
-        })
-        .catch(error => console.error('Error loading WMS GeoJSON data:', error));
-}
-
-// Function to hide WMS obstacles
-function hideWMSObstacles() {
-    if (obstaclesLayer) {
-        markers.removeLayer(obstaclesLayer); // Remove obstacles from the markers cluster group
-    }
-}
-
-// Add event listener to the "Hindernisse anzeigen" checkbox
-document.getElementById('show-obstacles').addEventListener('change', (event) => {
-    if (event.target.checked) {
-        showWMSObstacles();
-    } else {
-        hideWMSObstacles();
+        return clusterIcon;
     }
 });
 
 // Benutzerdefiniertes Icon laden
 const obstacleIcon = L.icon({
-    iconUrl: "./static/obstacle_icon.svg", // Icon-Pfad im selben Verzeichnis
+    iconUrl: "./static/images/obstacle_icon.svg", // Icon-Pfad im selben Verzeichnis
     iconSize: [25, 25],          // Größe des Icons
     iconAnchor: [12, 12]         // Position des Ankers
-});
-
-document.getElementById('navigation-button').addEventListener('click', () => {
-    getLocations();
 });
 
 // Get the modal
@@ -157,7 +95,15 @@ submitBtn.addEventListener('click', () => {
     modal.style.display = 'none';
 });
 
-// Hindernis hinzufügen
+/**
+ * Records an obstacle with the specified severity at the current location.
+ *
+ * This function sends the current latitude and longitude along with the severity
+ * of the obstacle to the server. If the obstacle is successfully saved, a marker
+ * is added to the map at the obstacle's location.
+ *
+ * @param {number} severity - The severity of the obstacle (1-5).
+ */
 function recordObstacle(severity) {
     console.log('Recording obstacle with severity:', severity);
     if (currentLat !== null && currentLon !== null) {
@@ -195,7 +141,18 @@ function recordObstacle(severity) {
     }
 }
 
-// Function to calculate the distance between two coordinates in meters
+/**
+ * Calculates the distance between two coordinates in meters.
+ *
+ * This function uses the Haversine formula to calculate the great-circle distance
+ * between two points on the Earth's surface specified by their latitude and longitude.
+ *
+ * @param {number} lat1 - The latitude of the first point in degrees.
+ * @param {number} lon1 - The longitude of the first point in degrees.
+ * @param {number} lat2 - The latitude of the second point in degrees.
+ * @param {number} lon2 - The longitude of the second point in degrees.
+ * @returns {number} The distance between the two points in meters.
+ */
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371e3; // Earth radius in meters
     const φ1 = lat1 * Math.PI / 180;
@@ -215,7 +172,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 document.getElementById('navigation-button').addEventListener('click', () => {
     if (!isNavigating) {
         isNavigating = true;
-        startNavigation();
+        startTime = new Date().toISOString();
+        startNavigation(startTime);
         startRecordingTrajectory();
         alert("Navigation started.");
     }
@@ -230,8 +188,17 @@ document.getElementById('stop-navigation').addEventListener('click', () => {
     }
 });
 
-// Function to start navigation
-function startNavigation() {
+/**
+ * Starts the navigation to the specified destination.
+ *
+ * This function retrieves the destination from the search input field,
+ * geocodes it to get the latitude and longitude, and then updates the path
+ * from the current location to the destination. If the destination is not
+ * provided or the current location is not available, it shows an alert.
+ *
+ * @param {string} startTime - The start time of the navigation in ISO format.
+ */
+function startNavigation(startTime) {
     isNavigating = true;
     const searchInput = document.getElementById('search-input');
     const destination = searchInput.value.trim();
@@ -251,7 +218,7 @@ function startNavigation() {
                     targetLat = data[0].lat;
                     targetLon = data[0].lon;
                     if (!pathCalculated) {
-                        updatePath(currentLat, currentLon, targetLat, targetLon);
+                        updatePath(currentLat, currentLon, targetLat, targetLon, startTime);
                     }
                 }
             })
@@ -264,9 +231,23 @@ function startNavigation() {
     }
 }
 
-// Function to update the path
-function updatePath(startLat, startLon, endLat, endLon) {
-    fetch('/gta_project/shortest-path', {
+/**
+ * Updates the path from the start location to the end location on the map.
+ *
+ * This function sends a request to the server to calculate the shortest path
+ * between the start and end coordinates. If the path is successfully retrieved,
+ * it clears any existing path on the map and draws the new path. If there is an
+ * error during the fetch operation or if the server returns an error, an error
+ * message is logged to the console and an alert is shown to the user.
+ *
+ * @param {number} startLat - The latitude of the start location.
+ * @param {number} startLon - The longitude of the start location.
+ * @param {number} endLat - The latitude of the end location.
+ * @param {number} endLon - The longitude of the end location.
+ * @param {string} startTime - The start time of the navigation in ISO format.
+ */
+function updatePath(startLat, startLon, endLat, endLon, startTime) {
+    fetch('/gta_project/start-navigation', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -276,6 +257,7 @@ function updatePath(startLat, startLon, endLat, endLon) {
             start_lon: startLon,
             end_lat: endLat,
             end_lon: endLon,
+            start_time: startTime, // Send the start time
             accessibility: document.getElementById('accessibility-switch').checked,
         }),
     })
@@ -317,6 +299,13 @@ function updatePath(startLat, startLon, endLat, endLon) {
         });
 }
 
+/**
+ * Starts recording the user's trajectory using the Geolocation API.
+ *
+ * This function watches the user's position and updates the current latitude and longitude.
+ * It sends the current location to the server and updates the marker on the map.
+ * If the user reaches the destination, it stops the navigation and alerts the user.
+ */
 function startRecordingTrajectory() {
     if ("geolocation" in navigator) {
         watchId = navigator.geolocation.watchPosition(
@@ -360,7 +349,7 @@ function startRecordingTrajectory() {
             {
                 enableHighAccuracy: true,
                 maximumAge: 0,
-                timeout: 10000,
+                timeout: Infinity,
             }
         );
     } else {
@@ -368,6 +357,12 @@ function startRecordingTrajectory() {
     }
 }
 
+/**
+ * Stops recording the user's trajectory using the Geolocation API.
+ *
+ * This function clears the watch on the user's position if it is currently active,
+ * stopping the updates to the current latitude and longitude.
+ */
 function stopRecordingTrajectory() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
@@ -375,6 +370,16 @@ function stopRecordingTrajectory() {
     }
 }
 
+/**
+ * Stops the navigation process and clears the current path on the map.
+ *
+ * This function resets the navigation state, clears the path calculated flag,
+ * removes the current path layer from the map, and sends a request to the server
+ * to stop the navigation. If the server responds with an error, it logs the error
+ * and shows an alert to the user.
+ *
+ * @param {boolean} [reachedDestination=false] - Indicates whether the destination was reached.
+ */
 function stopNavigation(reachedDestination = false) {
     isNavigating = false;
     pathCalculated = false; // Reset the pathCalculated flag
@@ -382,11 +387,6 @@ function stopNavigation(reachedDestination = false) {
     if (currentPathLayer) {
         map.removeLayer(currentPathLayer);
         currentPathLayer = null;
-    }
-    // Additional logic to handle stopping navigation, e.g., clearing the map
-    if (map.currentLocationMarker) {
-        map.removeLayer(map.currentLocationMarker);
-        map.currentLocationMarker = null;
     }
 
     // Call the stop-navigation endpoint
@@ -415,44 +415,22 @@ function stopNavigation(reachedDestination = false) {
     });
 }
 
-
-// Hole aktuelle Position und Zielort
-function getLocations() {
-    const searchInput = document.getElementById('search-input');
-    const destination = searchInput.value.trim();
-
-    if (!destination) {
-        alert("Please enter a destination.");
-        return;
-    }
-
-    if (currentLat !== null && currentLon !== null) {
-        const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination)}`;
-
-        fetch(geocodeUrl)
-            .then(response => response.json())
-            .then(data => {
-                if (data.length > 0) {
-                    targetLat = data[0].lat;
-                    targetLon = data[0].lon;
-                    updatePath(currentLat, currentLon, targetLat, targetLon);
-                }
-            })
-            .catch(error => {
-                console.error("Error fetching geocode data:", error);
-                alert("There was a problem searching for the destination.");
-            });
-    } else {
-        console.warn('Current location is not available.');
-    }
-}
-
 document.getElementById('stop-navigation').addEventListener('click', () => {
     if (currentPathLayer) {
         map.removeLayer(currentPathLayer);
     }
 });
 
+/**
+ * Finds the location of the specified destination and updates the map view.
+ *
+ * This function takes a destination string, geocodes it to get the latitude and longitude,
+ * and then updates the map view to center on the found location. If the location is found,
+ * it adds a marker to the map at the location. If the location is not found or there is an error
+ * during the geocoding process, it shows an alert to the user.
+ *
+ * @param {string} destination - The name or address of the destination to find.
+ */
 function findLocation(destination) {
     if (!destination) {
         alert("Please enter a destination.");
@@ -482,28 +460,6 @@ function findLocation(destination) {
             console.error("Error fetching geocode data:", error);
             alert("There was a problem searching for the destination.");
         });
-}
-
-// Zeige Route auf Karte an
-function displayPathOnMap(path) {
-    if (!path) {
-        alert("No path found.");
-        return;
-    }
-
-    // Clear existing path if any
-    if (window.currentPathLayer) {
-        map.removeLayer(window.currentPathLayer);
-    }
-
-    // Convert path to LatLng coordinates
-    const latLngs = path.map(node => [node.lat, node.lon]);
-
-    // Create a polyline and add it to the map
-    window.currentPathLayer = L.polyline(latLngs, {color: 'blue'}).addTo(map);
-
-    // Fit the map to the polyline bounds
-    map.fitBounds(window.currentPathLayer.getBounds());
 }
 
 // Menü-Interaktion sicherstellen
@@ -554,7 +510,17 @@ searchInput.addEventListener('input', () => {
     }
 });
 
-// Fetch location suggestions from the Nominatim API
+/**
+ * Fetches location suggestions from the Nominatim API based on the query.
+ *
+ * This function sends a request to the Nominatim API to search for locations
+ * matching the provided query within the specified bounding box for Zurich.
+ * The results are limited to 5 suggestions. If the fetch operation is successful,
+ * the suggestions are displayed using the `displaySuggestions` function.
+ * If there is an error during the fetch operation, an error message is logged to the console.
+ *
+ * @param {string} query - The search query for the location suggestions.
+ */
 function fetchSuggestions(query) {
     const zurichViewbox = '8.455,47.323,8.617,47.434'; // Bounding box for Zurich (minLon, minLat, maxLon, maxLat)
     const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&viewbox=${zurichViewbox}&bounded=1`;
@@ -569,7 +535,16 @@ function fetchSuggestions(query) {
         });
 }
 
-// Display the suggestions in a dropdown list
+/**
+ * Displays the location suggestions in a dropdown list.
+ *
+ * This function creates a container for the suggestions and positions it
+ * below the search input field. It iterates over the suggestions and creates
+ * a clickable item for each suggestion. When a suggestion is clicked, it updates
+ * the search input field with the selected suggestion and shows the location on the map.
+ *
+ * @param {Array} suggestions - An array of suggestion objects containing location data.
+ */
 function displaySuggestions(suggestions) {
     clearSuggestions();
     const suggestionsContainer = document.createElement('div');
@@ -592,11 +567,36 @@ function displaySuggestions(suggestions) {
         suggestionItem.addEventListener('click', () => {
             searchInput.value = suggestion.display_name;
             clearSuggestions();
+            showLocationOnMap(suggestion);
         });
         suggestionsContainer.appendChild(suggestionItem);
     });
 
     searchInput.parentNode.appendChild(suggestionsContainer);
+}
+
+/**
+ * Shows the location on the map based on the provided suggestion.
+ *
+ * This function takes a suggestion object containing latitude and longitude,
+ * centers the map view on the specified location, and adds a marker at that location.
+ * If a marker already exists, it removes the existing marker before adding the new one.
+ *
+ * @param {Object} suggestion - The suggestion object containing location data.
+ * @param {number} suggestion.lat - The latitude of the location.
+ * @param {number} suggestion.lon - The longitude of the location.
+ * @param {string} suggestion.display_name - The display name of the location.
+ */
+function showLocationOnMap(suggestion) {
+    const lat = suggestion.lat;
+    const lon = suggestion.lon;
+    map.setView([lat, lon], 15);
+
+    // Add a marker for the found location
+    if (currentMarker) {
+        map.removeLayer(currentMarker);
+    }
+    currentMarker = L.marker([lat, lon]).addTo(map).bindPopup(suggestion.display_name).openPopup();
 }
 
 // Clear the suggestions dropdown
@@ -611,51 +611,156 @@ function clearSuggestions() {
 // Add the markers cluster group to the map
 map.addLayer(markers);
 
-// Function to show obstacles
-function showObstacles() {
-    if (!obstaclesLayer) {
-        // Load the ZueriACT GeoJSON data and add it to the map
-        fetch('https://www.ogd.stadt-zuerich.ch/wfs/geoportal/ZueriACT_barrierefreie_Mobilitaet?service=WFS&version=1.1.0&request=GetFeature&outputFormat=GeoJSON&typename=zueriact_daten_aufbereitet')
-            .then(response => response.json())
-            .then(data => {
-                obstaclesLayer = L.geoJSON(data, {
-                    pointToLayer: function (feature, latlng) {
-                        // Use the custom icon for individual markers
-                        return L.marker(latlng, {
-                            icon: L.icon({
-                                iconUrl: "./static/obstacle_icon.svg", // Path to your SVG
-                                iconSize: [25, 25],
-                                iconAnchor: [12, 12]
-                            })
-                        });
-                    }
-                });
-                markers.addLayer(obstaclesLayer); // Add obstacles to the markers cluster group
-            })
-            .catch(error => console.error('Error loading ZueriACT GeoJSON data:', error));
-    } else {
-        markers.addLayer(obstaclesLayer); // Add obstacles to the markers cluster group
-    }
+
+/**
+ * Shows all obstacles on the map, including both ZueriACT and WMS obstacles.
+ *
+ * This function fetches and displays obstacles from both the ZueriACT GeoJSON data
+ * and the WMS GeoJSON data. It removes any existing obstacles layer before adding
+ * the new obstacles to the map.
+ */
+function showAllObstacles() {
+    hideObstacles(); // Ensure any existing obstacles are removed
+
+    // Load the ZueriACT GeoJSON data and add it to the map
+    fetch('https://www.ogd.stadt-zuerich.ch/wfs/geoportal/ZueriACT_barrierefreie_Mobilitaet?service=WFS&version=1.1.0&request=GetFeature&outputFormat=GeoJSON&typename=zueriact_daten_aufbereitet')
+        .then(response => response.json())
+        .then(data => {
+            obstaclesLayer = L.geoJSON(data, {
+                pointToLayer: function (feature, latlng) {
+                    // Use the custom icon for individual markers
+                    return L.marker(latlng, {
+                        icon: L.icon({
+                            iconUrl: "./static/images/obstacle_icon.svg", // Path to your SVG
+                            iconSize: [25, 25],
+                            iconAnchor: [12, 12]
+                        })
+                    });
+                }
+            });
+            markers.addLayer(obstaclesLayer); // Add obstacles to the markers cluster group
+        })
+        .catch(error => console.error('Error loading ZueriACT GeoJSON data:', error));
+
+    // Load the WMS GeoJSON data and add it to the map
+    const wmsUrl = 'https://baug-ikg-gis-01.ethz.ch:8443/geoserver/wms';
+    const wmsParams = {
+        service: 'WFS',
+        version: '1.1.0',
+        request: 'GetFeature',
+        typeName: 'obstacles', // Replace with your actual layer name
+        outputFormat: 'application/json'
+    };
+    const url = `${wmsUrl}?${new URLSearchParams(wmsParams).toString()}`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            wmsObstaclesLayer = L.geoJSON(data, {
+                pointToLayer: function (feature, latlng) {
+                    // Use the custom icon for individual markers
+                    return L.marker(latlng, {
+                        icon: L.icon({
+                            iconUrl: "./static/images/obstacle_icon.svg", // Path to your SVG
+                            iconSize: [25, 25],
+                            iconAnchor: [12, 12]
+                        })
+                    }).bindPopup(`<b>Severity:</b> ${feature.properties.severity}`);
+                }
+            });
+            markers.addLayer(wmsObstaclesLayer); // Add WMS obstacles to the markers cluster group
+        })
+        .catch(error => console.error('Error loading WMS GeoJSON data:', error));
 }
 
-// Function to hide obstacles
+
+
+/**
+ * Hides all obstacles from the map.
+ *
+ * This function removes the obstacles layer from the markers cluster group
+ * and sets the obstaclesLayer and wmsObstaclesLayer variables to null.
+ */
 function hideObstacles() {
     if (obstaclesLayer) {
-        markers.removeLayer(obstaclesLayer); // Remove obstacles from the markers cluster group
+        markers.removeLayer(obstaclesLayer); // Remove ZueriACT obstacles from the markers cluster group
+        obstaclesLayer = null; // Set obstaclesLayer to null
+    }
+    if (wmsObstaclesLayer) {
+        markers.removeLayer(wmsObstaclesLayer); // Remove WMS obstacles from the markers cluster group
+        wmsObstaclesLayer = null; // Set wmsObstaclesLayer to null
     }
 }
 
-// Add event listener to the "Hindernisse anzeigen" checkbox
 document.getElementById('show-obstacles').addEventListener('change', (event) => {
     if (event.target.checked) {
-        showObstacles();
+        showAllObstacles();
     } else {
         hideObstacles();
     }
 });
 
+document.getElementById('statistics-link').addEventListener('click', (event) => {
+    event.preventDefault();
+    showHeatMap();
+});
 
-//setInterval(updateInfo, 1000); // Aktualisiere jede Sekunde
+// Add event listener to the map button to clear the heatmap when clicked
+document.getElementById('map-button').addEventListener('click', () => {
+    if (window.heatmapLayer) {
+        map.removeLayer(window.heatmapLayer);
+        window.heatmapLayer = null; // Clear the reference to the heatmap layer
+    }
+});
+
+/**
+ * Fetches heatmap data from the server and displays it on the map.
+ *
+ * This function sends a request to the server to retrieve heatmap data in GeoJSON format.
+ * If the data is successfully retrieved, it removes any existing heatmap layer from the map
+ * and creates a new heatmap layer with the fetched data. The heatmap layer is styled with
+ * a red color, weight of 5, and opacity of 0.7.
+ *
+ * If there is an error during the fetch operation or if the server returns an error,
+ * an error message is logged to the console and an alert is shown to the user.
+ */
+function showHeatMap() {
+    fetch('/gta_project/heatmap-data')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                console.error('Error fetching heatmap data:', data.error);
+                alert('Error fetching heatmap data: ' + data.error);
+                return;
+            }
+
+            // Remove existing heatmap layer if any
+            if (window.heatmapLayer) {
+                map.removeLayer(window.heatmapLayer);
+            }
+
+            // Create a new heatmap layer
+            window.heatmapLayer = L.geoJSON(data, {
+                style: function (feature) {
+                    return {
+                        color: 'red',
+                        weight: 5,
+                        opacity: 0.7
+                    };
+                }
+            }).addTo(map);
+        })
+        .catch(error => {
+            console.error('Error fetching heatmap data:', error);
+            alert('Error fetching heatmap data: ' + error.message);
+        });
+}
+
 
 // Benutzerdefiniertes ausgefülltes Standort-Icon
 const locationIcon = L.divIcon({
@@ -670,6 +775,40 @@ const locationIcon = L.divIcon({
     iconAnchor: [15, 30], // Ankerpunkt am unteren Ende des Symbols
 });
 
+/**
+ * Retrieves the value of a cookie by its name.
+ *
+ * @param {string} name - The name of the cookie to retrieve.
+ * @returns {string|null} The value of the cookie if found, otherwise null.
+ */
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+/**
+ * Sets a cookie with the specified name, value, expiration days, and SameSite attribute.
+ *
+ * @param {string} name - The name of the cookie.
+ * @param {string} value - The value of the cookie.
+ * @param {number} days - The number of days until the cookie expires.
+ */
+function setCookie(name, value, days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = `expires=${date.toUTCString()}`;
+    document.cookie = `${name}=${value};${expires};path=/;SameSite=None;Secure`;
+}
+
+document.addEventListener('DOMContentLoaded', (event) => {
+    const userId = getCookie('user_id');
+    if (userId) {
+        console.log('User ID cookie found:', userId);
+    } else {
+        console.warn('User ID cookie not found.');
+    }
+});
 
 // Geolocation aktivieren und Standort tracken
 if ("geolocation" in navigator) {
@@ -691,7 +830,7 @@ if ("geolocation" in navigator) {
                     if (distanceToTarget <= 10) {
                         stopNavigation();
                     } else if (distanceToTarget > 10) {
-                        updatePath(currentLat, currentLon, targetLat, targetLon);
+                        updatePath(currentLat, currentLon, targetLat, targetLon, startTime);
                     }
                 }
             }

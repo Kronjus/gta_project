@@ -5,7 +5,7 @@
       <paths name="gta_project">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/gta_project" local="$PROJECT_DIR$" web="/gta_project" />
           </mappings>
         </serverdata>
       </paths>
