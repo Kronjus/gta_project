@@ -25,8 +25,47 @@
     <ul>
         <li><a id="map-button" href="#">Map</a></li>
         <li><a href="#" id="statistics-link">Statistics</a></li>
-        <li><a href="#">Information & Contact</a></li>
+        <li><a href="#" id="info-contact-link">Information & Contact</a></li>
     </ul>
+    <div id="info-contact" class="info-contact">
+
+        <h1>Information & Contact</h1>
+        <p>Dear User,
+            Welcome to this Accessible Navigation Map. This website was created within a semester project and aims to
+            offer
+            a navigation for regular & physically disabled people in the city of Zurich.
+            <br>
+            Following, a detailed description of how to proceed is scripted.
+        </p>
+        <br>
+        <h2>Step-by-Step Instruction:</h2>
+        <h4>1. Permission of position</h4>
+        <p>Allow the website to access your position.</p>
+
+        <h4>2. Enter destination</h4>
+        <p>Put your suggested destination into the box telling "Enter destination...".</p>
+
+        <h4>3. Choice of Mobility</h4>
+        <p>Choose whether the navigation should be applied for physically disabled people and therefore avoid steep
+            streets.</p>
+
+        <h4>4. Start navigation</h4>
+        <p>The navigation can be started by pressing the play-Button. A suitable route should be suggested within a few
+            seconds.</p>>
+
+        <h4>5. Obstacles</h4>
+        <p>Whenever an obstacle occurs on your trip, please mark it by pressing the triangular sign. You can choose the
+            severity of the obstacle (1-5).</p>>
+
+        <h4>6. Stop navigation</h4>
+        <p>To stop the navigation, press the pause-Button. In case of arriving at the suggested destination, you will
+            get a
+            message and the navigation will stop automatically.</p>
+        <br>
+        <h2>Contact</h2>
+        <p>For further information please contact <a href="mailto:jujansen@student.ethz.ch">jujansen@student.ethz.ch</a>.
+        </p>
+    </div>
 </nav>
 
 <!-- Kartencontainer -->
@@ -35,7 +74,7 @@
 </div>
 
 <div id="search-bar">
-    <input type="text" id="search-input" placeholder="Enter Destination..."/>
+    <label for="search-input"></label><input type="text" id="search-input" placeholder="Enter Destination..."/>
     <button id="search-btn">🔍</button>
 </div>
 
@@ -63,6 +102,15 @@
         <i class="fa fa-exclamation-triangle"></i>
     </button>
     <p>Record Obstacle</p>
+</div>
+
+<!-- Add this inside the body tag -->
+<div id="legend" style="display: none;">
+    <h3>Heatmap Legend</h3>
+    <p><span style="background-color: red; width: 20px; height: 20px; display: inline-block;"></span> High Density</p>
+    <p><span style="background-color: yellow; width: 20px; height: 20px; display: inline-block;"></span> Medium Density
+    </p>
+    <p><span style="background-color: green; width: 20px; height: 20px; display: inline-block;"></span> Low Density</p>
 </div>
 
 <div id="obstacle-modal" class="modal">

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="SshConfigs">
     <configs>
-      <sshConfig host="g1gtaent.ethz.ch" id="381a2c77-e70d-48d1-b500-317b1e03e6fe" keyPath="C:\Users\jj\.ssh\id_ed25519" port="22" nameFormat="DESCRIPTIVE" username="w3_g1gtaent" useOpenSSHConfig="true" />
+      <sshConfig host="g1gtaent" id="b073012a-4b8f-405c-9e01-9f297879b727" keyPath="C:\Users\jj\.ssh\id_ed25519" port="22" nameFormat="DESCRIPTIVE" username="w3_g1gtaent" useOpenSSHConfig="true" />
     </configs>
   </component>
 </project>

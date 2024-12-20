@@ -325,6 +325,7 @@ input:checked + .slider:before {
     text-align: center;
     padding: 10px;
     display: block; /* Change from 'none' to 'block' */
+    z-index: 3000; /* Ensure it's higher than the map's z-index */
 }
 
 .cookie-notification p {
@@ -338,4 +339,43 @@ input:checked + .slider:before {
     border: none;
     padding: 5px 10px;
     cursor: pointer;
+    z-index: 3001;
+}
+
+.info-contact {
+    display: none; /* Initially hidden */
+    background-color: #f9f9f9; /* Light background color */
+    border: 1px solid #ccc; /* Light border */
+    padding: 20px; /* Padding inside the div */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+    max-width: 800px; /* Maximum width */
+    margin: 20px auto; /* Center horizontally */
+    opacity: 0; /* Start with opacity 0 */
+    transform: translateY(-20px); /* Start with a slight upward shift */
+    transition: opacity 0.5s ease, transform 0.5s ease; /* Add transition for opacity and transform */
+}
+
+.info-contact.show {
+    display: block; /* Make it visible */
+    opacity: 1; /* Fade in */
+    transform: translateY(0); /* Move to original position */
+}
+
+.info-contact h1, .info-contact h2, .info-contact h4 {
+    color: #333; /* Darker text color for headings */
+}
+
+.info-contact p {
+    color: #666; /* Lighter text color for paragraphs */
+    line-height: 1.6; /* Increased line height for readability */
+}
+
+.info-contact a {
+    color: #007bff; /* Link color */
+    text-decoration: none; /* Remove underline from links */
+}
+
+.info-contact a:hover {
+    text-decoration: underline; /* Underline links on hover */
 }

@@ -2,8 +2,8 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="733365b5-eee8-4532-ad6d-c8d813f9be78" name="gta_project" url="https://g1gtaent.ethz.ch/">
-        <fileTransfer rootFolder="/instances/home/g1gtaent" accessType="SFTP" host="g1gtaent.ethz.ch" port="22" sshConfigId="381a2c77-e70d-48d1-b500-317b1e03e6fe" sshConfig="w3_g1gtaent@g1gtaent.ethz.ch:22 key" keyPair="true">
+      <webServer id="b2d322bf-63fe-4ce8-9135-b64716a2af3e" name="gta_project" url="https://g1gtaent.ethz.ch/">
+        <fileTransfer rootFolder="/instances/home/g1gtaent" accessType="SFTP" host="g1gtaent" port="22" sshConfigId="b073012a-4b8f-405c-9e01-9f297879b727" sshConfig="w3_g1gtaent@g1gtaent:22 key" keyPair="true">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
           </advancedOptions>

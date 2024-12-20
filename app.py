@@ -11,6 +11,7 @@ import osmnx as ox
 import pytz
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session, make_response
+from pyproj import Transformer
 from shapely import wkt
 from shapely.geometry import Point, LineString
 from sqlalchemy import create_engine, text
@@ -18,6 +19,8 @@ from sqlalchemy.exc import SQLAlchemyError
 
 load_dotenv()
 cet = pytz.timezone('CET')
+
+transformer = Transformer.from_crs("EPSG:2056", "EPSG:4326", always_xy=True)
 
 app = Flask(__name__)
 # app.config['APPLICATION_ROOT'] = '/gta_project'
@@ -221,6 +224,26 @@ def find_shortest_accessible_path(G: nx.MultiDiGraph, start_lon: float, start_la
         print("No path found between the specified nodes")
         return None
 
+
+def transform_coordinates(features: list[dict]) -> list[list]:
+    """
+    Transform coordinates from EPSG:2056 to EPSG:4326.
+
+    This function takes a list of features, each containing coordinates in the EPSG:2056 format,
+    and transforms them to the EPSG:4326 format using the predefined transformer.
+
+    Args:
+        features (list[dict]): A list of dictionaries, each containing 'coordinates' key with easting and northing values.
+
+    Returns:
+        list[list]: A list of transformed coordinates, each represented as [latitude, longitude].
+    """
+    transformed_features = []
+    for feature in features:
+        easting, northing = feature['coordinates']
+        lon, lat = transformer.transform(easting, northing)
+        transformed_features.append([lat, lon])
+    return transformed_features
 
 @app.route('/')
 def home():
@@ -469,7 +492,7 @@ def heatmap_data():
     Endpoint to retrieve heatmap data.
 
     This function connects to the PostgreSQL database, executes a query to fetch
-    the avoided segments as GeoJSON, and returns the data as a JSON response.
+    the avoided segments as interpolated points in GeoJSON format, and returns the data as a JSON response.
 
     Returns:
         JSON response containing the avoided segments data or an error message.
@@ -478,20 +501,39 @@ def heatmap_data():
         # Create a new SQLAlchemy engine instance
         engine = create_engine(
             f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}",
-            echo=True
+            echo=False,
+            isolation_level="AUTOCOMMIT"
         )
 
-        # Execute the query to fetch avoided segments as GeoJSON
-        with engine.begin() as conn:
+        # Execute the query to fetch avoided segments as interpolated points in GeoJSON format
+        with engine.connect() as conn:
             results = conn.execute(
-                text("SELECT ST_AsGeoJSON(avoided_segments) AS avoided_segments FROM gta_p1.avoided_segments"))
+                text("""
+                    SELECT ST_AsGeoJSON((ST_DumpPoints(ST_Segmentize(ST_Transform(avoided_segments, 2056), 10.0))).geom) AS point 
+                    FROM gta_p1.avoided_segments
+                """)
+            ).mappings()
+        # Retrieve the result as a list of GeoJSON features
+        features = []
+        for row in results:
+            point = json.loads(row['point'])
+            features.append(point)
 
-        # Retrieve the result as a scalar value
+        transformed_features = transform_coordinates(features)
 
-        data = [json.loads(row[0]) for row in results]
+        for i, feature in enumerate(features):
+            feature['coordinates'] = transformed_features[i]
+            feature['crs'] = {
+                "type": "name",
+                "properties": {
+                    "name": "EPSG:4326"
+                }
+            }
+
         # Return the data as a JSON response
-        return jsonify(data)
+        return jsonify({'features': features})
     except Exception as e:
+        print(f"Error retrieving heatmap data: {e}")
         # Return an error message in case of an exception
         return jsonify({'error': str(e)}), 500
 

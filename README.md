@@ -7,19 +7,18 @@ the map and plan the route accordingly.
 ## Requirements
 
 - Python
-- pip
-- Flask
+- flask
 - numpy
-- pandas
+- requests
+- sqlalchemy
+- scikit-learn
 - geopandas
 - osmnx
 - networkx
-- requests
-- sqlalchemy
-- psycopg2
-- fiona
 - shapely
-- pyproj
+- python-dotenv
+- PostgreSQL
+- PostGIS
 
 ## Setup
 
@@ -67,9 +66,10 @@ the map and plan the route accordingly.
 ## Project Structure
 
 - `app.py`: The main application file.
-- `instance/`: Contains instance-specific files.
 - `.env`: Environment variables file.
-- `.webassets-cache`: Cache for web assets.
+- `requirements.txt`: The dependencies of the project.
+- `templates/`: The HTML templates of the application.
+- `static/`: The static files of the application.
 
 ## License
 

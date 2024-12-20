@@ -2,9 +2,10 @@ flask
 numpy
 requests
 sqlalchemy
-scikit-learn
+scikit-learn>=1.5.0
 geopandas
 osmnx
 networkx
 shapely
 python-dotenv
+pyproj

@@ -714,51 +714,72 @@ document.getElementById('map-button').addEventListener('click', () => {
 });
 
 /**
- * Fetches heatmap data from the server and displays it on the map.
+ * Fetches heatmap data from the server and processes it for use with Leaflet.
  *
  * This function sends a request to the server to retrieve heatmap data in GeoJSON format.
- * If the data is successfully retrieved, it removes any existing heatmap layer from the map
- * and creates a new heatmap layer with the fetched data. The heatmap layer is styled with
- * a red color, weight of 5, and opacity of 0.7.
+ * It processes the data to convert coordinates from [longitude, latitude] to [latitude, longitude]
+ * for compatibility with Leaflet. If there is an error during the fetch operation or if the server
+ * returns an error, it logs the error to the console and returns an empty array.
  *
- * If there is an error during the fetch operation or if the server returns an error,
- * an error message is logged to the console and an alert is shown to the user.
+ * @async
+ * @function fetchHeatmapData
+ * @returns {Promise<Array<Array<number>>>} A promise that resolves to an array of [latitude, longitude] pairs.
  */
-function showHeatMap() {
-    fetch('/gta_project/heatmap-data')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) {
-                console.error('Error fetching heatmap data:', data.error);
-                alert('Error fetching heatmap data: ' + data.error);
-                return;
-            }
+async function fetchHeatmapData() {
+    try {
+        const response = await fetch('/gta_project/heatmap-data');
+        const data = await response.json();
 
-            // Remove existing heatmap layer if any
-            if (window.heatmapLayer) {
-                map.removeLayer(window.heatmapLayer);
-            }
+        if (data.error) {
+            console.error("Error fetching heatmap data:", data.error);
+            return [];
+        }
 
-            // Create a new heatmap layer
-            window.heatmapLayer = L.geoJSON(data, {
-                style: function (feature) {
-                    return {
-                        color: 'red',
-                        weight: 5,
-                        opacity: 0.7
-                    };
-                }
-            }).addTo(map);
-        })
-        .catch(error => {
-            console.error('Error fetching heatmap data:', error);
-            alert('Error fetching heatmap data: ' + error.message);
-        });
+        return data.features.map(feature => {
+            // Swap [lon, lat] to [lat, lon] for Leaflet
+            if (feature.coordinates && Array.isArray(feature.coordinates)) {
+                const [lat, lon] = feature.coordinates;
+                return [lat, lon];
+            }
+            console.warn("Invalid feature coordinates:", feature);
+            return null; // Filter out invalid features
+        }).filter(coord => coord !== null); // Remove null entries
+    } catch (error) {
+        console.error("Error fetching heatmap data:", error);
+        return [];
+    }
+}
+
+/**
+ * Displays a heatmap on the map using data fetched from the server.
+ *
+ * This function fetches heatmap data asynchronously and displays it on the map
+ * using the Leaflet heatmap layer. If there is no heatmap data available, it logs
+ * a warning message to the console. Before adding a new heatmap layer, it removes
+ * any existing heatmap layer from the map.
+ *
+ * @async
+ * @function showHeatMap
+ * @returns {Promise<void>} A promise that resolves when the heatmap is displayed.
+ */
+async function showHeatMap() {
+    const heatmapData = await fetchHeatmapData();
+    if (heatmapData.length === 0) {
+        console.warn("No heatmap data available.");
+        return;
+    }
+
+    // Remove any existing heatmap layer before adding a new one
+    if (window.heatmapLayer) {
+        map.removeLayer(window.heatmapLayer);
+    }
+
+    // Create a new heatmap layer
+    window.heatmapLayer = L.heatLayer(heatmapData, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+    }).addTo(map);
 }
 
 
@@ -775,11 +796,22 @@ const locationIcon = L.divIcon({
     iconAnchor: [15, 30], // Ankerpunkt am unteren Ende des Symbols
 });
 
+document.addEventListener('DOMContentLoaded', (event) => {
+    // Check if the cookies_accepted cookie is set
+    if (getCookie('cookies_accepted')) {
+        // Hide the cookie notification
+        document.querySelector('.cookie-notification').style.display = 'none';
+    }
+});
+
 /**
- * Retrieves the value of a cookie by its name.
+ * Retrieves the value of a specified cookie by name.
+ *
+ * This function searches the document's cookies for a cookie with the given name
+ * and returns its value. If the cookie is not found, it returns undefined.
  *
  * @param {string} name - The name of the cookie to retrieve.
- * @returns {string|null} The value of the cookie if found, otherwise null.
+ * @returns {string|undefined} The value of the cookie, or undefined if not found.
  */
 function getCookie(name) {
     const value = `; ${document.cookie}`;
@@ -787,27 +819,23 @@ function getCookie(name) {
     if (parts.length === 2) return parts.pop().split(';').shift();
 }
 
-/**
- * Sets a cookie with the specified name, value, expiration days, and SameSite attribute.
- *
- * @param {string} name - The name of the cookie.
- * @param {string} value - The value of the cookie.
- * @param {number} days - The number of days until the cookie expires.
- */
-function setCookie(name, value, days) {
-    const date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    const expires = `expires=${date.toUTCString()}`;
-    document.cookie = `${name}=${value};${expires};path=/;SameSite=None;Secure`;
-}
+// Add event listener to the accept button to handle the click event
+document.getElementById('accept-cookies').addEventListener('click', () => {
+    // Hide the cookie notification
+    document.querySelector('.cookie-notification').style.display = 'none';
 
-document.addEventListener('DOMContentLoaded', (event) => {
-    const userId = getCookie('user_id');
-    if (userId) {
-        console.log('User ID cookie found:', userId);
-    } else {
-        console.warn('User ID cookie not found.');
-    }
+    // Set a cookie to remember the user's choice
+    document.cookie = "cookies_accepted=true; path=/; max-age=" + (60 * 60 * 24 * 365); // 1 year
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const infoContactLink = document.getElementById('info-contact-link');
+    const infoContactDiv = document.getElementById('info-contact');
+
+    infoContactLink.addEventListener('click', function(event) {
+        event.preventDefault();
+        infoContactDiv.classList.toggle('show');
+    });
 });
 
 // Geolocation aktivieren und Standort tracken
